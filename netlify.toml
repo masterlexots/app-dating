@@ -1,0 +1,12 @@
+# Netlify publica la versión web automáticamente con cada cambio en GitHub.
+[build]
+  base = "app"
+  command = "npx expo export --platform web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Valores públicos por diseño (la seguridad la dan las reglas de la base de datos).
+  # Nunca pongas aquí la clave secret / service_role.
+  EXPO_PUBLIC_SUPABASE_URL = "https://orvjdexjfgifavrexmzm.supabase.co"
+  EXPO_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_HiTqvbW42MYUN8RO4prg7Q_lL_xlQeW"

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { rpc, supabase } from '../lib/supabase';
 import { F, useTheme } from '../lib/theme';
 import { fmtSlot, INTENTS, Intent } from '../lib/catalog';
@@ -31,6 +31,7 @@ export default function MatchScreen({ matchId, userId, onBack }: { matchId: stri
   const [slots, setSlots] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<[kind: 'ok' | 'warn' | 'bad', text: string] | null>(null);
+  const [viewer, setViewer] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -88,6 +89,7 @@ export default function MatchScreen({ matchId, userId, onBack }: { matchId: stri
 
   return (
     <Screen>
+      <PhotoViewer urls={photoUrls} index={viewer} onChange={setViewer} name={p.first_name} />
       <Button label="← Volver" kind="ghost" onPress={onBack} />
 
       {/* Tarjeta del match */}
@@ -96,7 +98,11 @@ export default function MatchScreen({ matchId, userId, onBack }: { matchId: stri
         {photoUrls.length > 0 && (
           <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={st.gallery}
             contentContainerStyle={{ gap: 8 }}>
-            {photoUrls.map(u => <Image key={u} source={{ uri: u }} style={st.photo} accessibilityLabel={`Foto de ${p.first_name}`} />)}
+            {photoUrls.map((u, i) => (
+              <Pressable key={u} onPress={() => setViewer(i)} accessibilityRole="imagebutton" accessibilityLabel={`Ver foto ${i + 1} de ${p.first_name} en grande`}>
+                <Image source={{ uri: u }} style={st.photo} />
+              </Pressable>
+            ))}
           </ScrollView>
         )}
         <T weight="display" size={44} style={{ lineHeight: 46, letterSpacing: -0.3 }}>{p.first_name}, {p.age}</T>
@@ -195,6 +201,34 @@ export default function MatchScreen({ matchId, userId, onBack }: { matchId: stri
   );
 }
 
+// Visor de fotos a pantalla completa, con anterior / siguiente.
+function PhotoViewer({ urls, index, onChange, name }: {
+  urls: string[]; index: number | null; onChange: (i: number | null) => void; name: string;
+}) {
+  if (index === null || !urls[index]) return null;
+  const go = (d: number) => onChange((index + d + urls.length) % urls.length);
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={() => onChange(null)}>
+      <View style={st.viewer}>
+        <Image source={{ uri: urls[index] }} style={{ width: '100%', height: '100%' }} resizeMode="contain"
+          accessibilityLabel={`Foto ${index + 1} de ${urls.length} de ${name}`} />
+        <Pressable onPress={() => onChange(null)} style={[st.vBtn, { top: 24, right: 16 }]} accessibilityLabel="Cerrar">
+          <T weight="bold" size={22} color="#fff">×</T>
+        </Pressable>
+        {urls.length > 1 && <>
+          <Pressable onPress={() => go(-1)} style={[st.vBtn, { left: 12, top: '50%' }]} accessibilityLabel="Foto anterior">
+            <T weight="bold" size={22} color="#fff">‹</T>
+          </Pressable>
+          <Pressable onPress={() => go(1)} style={[st.vBtn, { right: 12, top: '50%' }]} accessibilityLabel="Foto siguiente">
+            <T weight="bold" size={22} color="#fff">›</T>
+          </Pressable>
+          <View style={st.vCount}><T weight="semibold" size={13} color="#fff">{index + 1} / {urls.length}</T></View>
+        </>}
+      </View>
+    </Modal>
+  );
+}
+
 function Chat({ matchId, userId, partner }: { matchId: string; userId: string; partner: string }) {
   const t = useTheme();
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -283,6 +317,9 @@ function Feedback({ matchId, arrivalOk, partner, onDone }: { matchId: string; ar
 }
 
 const st = StyleSheet.create({
+  viewer: { flex: 1, backgroundColor: 'rgba(15,8,12,0.96)', justifyContent: 'center' },
+  vBtn: { position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
+  vCount: { position: 'absolute', bottom: 28, alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.16)' },
   gallery: { marginHorizontal: -22, marginTop: -22, borderTopLeftRadius: 28, borderTopRightRadius: 28 },
   photo: { width: 390, maxWidth: '100%', aspectRatio: 4 / 5, borderRadius: 0 },
   answer: { borderRadius: 20, padding: 16, gap: 6 },

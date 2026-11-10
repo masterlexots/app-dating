@@ -46,6 +46,10 @@ npm install
 npm run web               # o: npm run ios / npm run android (con Expo Go)
 ```
 
+### Publicación web automática
+
+`netlify.toml` define la compilación. Con el sitio de Netlify conectado a este repositorio, cada cambio en `main` se publica solo.
+
 ### Probar sin proveedores de pago ni verificación
 
 Mientras esas integraciones no existen, marca un usuario como listo desde el SQL Editor:

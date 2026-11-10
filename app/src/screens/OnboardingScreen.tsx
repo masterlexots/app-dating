@@ -81,7 +81,7 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
   const datosOk = firstName.trim() && lastName.trim() && phoneDigits.length === 10 && birthCheck.iso && gender && alcaldia && privacyConsent;
   const filtrosOk = hasKids !== null && kidsPref && ownPolitics && politicsPref && ownReligion && religionPref && sensConsent;
   const detailsOk = interests.every(i => (details[i] ?? []).length > 0);
-  const quizOk = interests.length >= 3 && detailsOk && career && jobTitle.trim() && LINKEDIN_RE.test(linkedin.trim()) && salary
+  const quizOk = interests.length >= 3 && detailsOk && career && jobTitle.trim() && (!linkedin.trim() || LINKEDIN_RE.test(linkedin.trim())) && salary
     && (salary === NO_SALARY || salaryConsent);
 
   // Guarda el perfil completo al terminar el cuestionario (las fotos necesitan que exista).
@@ -92,7 +92,7 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
         id: userId, first_name: firstName.trim(), last_name: lastName.trim(), email: email.trim().toLowerCase(),
         phone: `+52${phoneDigits}`, birthdate: birthCheck.iso, gender, seeking_gender: gender === 'hombre' ? 'mujer' : 'hombre',
         intent, match_type: matchType, activities: activities.trim() || null, personality,
-        career_level: career, job_title: jobTitle.trim(), linkedin_url: linkedin.trim(), alcaldia,
+        career_level: career, job_title: jobTitle.trim(), linkedin_url: linkedin.trim() || null, alcaldia,
         privacy_version: PRIVACY_VERSION, privacy_accepted_at: new Date().toISOString(),
       });
       if (e1) throw e1;
@@ -277,11 +277,12 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
       ))}
       <Label>Experiencia profesional</Label>
       <Chips options={CAREER_LEVELS} selected={career ? [career] : []} onToggle={setCareer} />
-      <Field label="Puesto actual" value={jobTitle} onChangeText={setJobTitle} placeholder="Ej. Gerente de Producto" />
-      <Field label="Perfil de LinkedIn" value={linkedin} onChangeText={setLinkedin} autoCapitalize="none" keyboardType="url"
+      <Field label={career === 'Estudiante' ? '¿Qué estudias y dónde?' : 'Puesto u ocupación actual'} value={jobTitle}
+        onChangeText={setJobTitle} placeholder={career === 'Estudiante' ? 'Ej. Arquitectura en la UNAM' : 'Ej. Gerente de Producto, chef, diseñador independiente'} />
+      <Field label="Perfil de LinkedIn (opcional)" value={linkedin} onChangeText={setLinkedin} autoCapitalize="none" keyboardType="url"
         placeholder="linkedin.com/in/tu-perfil"
         error={linkedin && !LINKEDIN_RE.test(linkedin.trim()) ? 'Debe verse como linkedin.com/in/tu-perfil' : undefined}
-        hint="Lo usamos para validar que tu experiencia sea real. No se muestra en tu perfil." />
+        hint="Si lo agregas y lo validamos, tu perfil muestra “Experiencia verificada”. Nunca se muestra el enlace." />
       <Label>Ingreso mensual aproximado</Label>
       <Chips options={['MXN', 'USD']} selected={[currency]} onToggle={v => { if (v !== currency) { setCurrency(v as 'MXN' | 'USD'); setSalary(null); } }} />
       <Chips options={[...SALARY[currency], NO_SALARY]} selected={salary ? [salary] : []} onToggle={setSalary} />
