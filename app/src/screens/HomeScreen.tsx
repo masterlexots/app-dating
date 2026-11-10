@@ -16,16 +16,23 @@ type CycleStatus = {
   eligible: boolean;
 };
 
-export default function HomeScreen({ onOpenMatch }: { onOpenMatch: (id: string) => void }) {
+export default function HomeScreen({ userId, onOpenMatch, onOpenPrefs }: {
+  userId: string; onOpenMatch: (id: string) => void; onOpenPrefs: () => void;
+}) {
   const t = useTheme();
   const [s, setS] = useState<CycleStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<[kind: 'ok' | 'warn' | 'bad', text: string] | null>(null);
+  const [noAgeRange, setNoAgeRange] = useState(false);
 
   const load = useCallback(async () => {
-    try { setS(await rpc<CycleStatus>('my_cycle_status')); }
+    try {
+      setS(await rpc<CycleStatus>('my_cycle_status'));
+      const { data } = await supabase.from('profiles').select('age_older_max, age_younger_max').eq('id', userId).single();
+      setNoAgeRange(!!data && data.age_older_max == null && data.age_younger_max == null);
+    }
     catch (e: any) { setMsg(['bad', e.message]); }
-  }, []);
+  }, [userId]);
   useEffect(() => { load(); }, [load]);
 
   async function togglePause() {
@@ -115,6 +122,14 @@ export default function HomeScreen({ onOpenMatch }: { onOpenMatch: (id: string) 
         </View>
       </Card>
 
+      {noAgeRange && s.status !== 'suspended' && (
+        <Card>
+          <Body>Aún no defines la diferencia de edad que aceptas. Por ahora te presentamos personas de cualquier edad.</Body>
+          <Button label="Definir rango de edad" kind="ghost" onPress={onOpenPrefs} />
+        </Card>
+      )}
+
+      <Button label="Mis preferencias" kind="ghost" onPress={onOpenPrefs} />
       <Button label="Actualizar" kind="ghost" onPress={load} />
       <Button label="Cerrar sesión" kind="ghost" onPress={() => supabase.auth.signOut()} />
     </Screen>

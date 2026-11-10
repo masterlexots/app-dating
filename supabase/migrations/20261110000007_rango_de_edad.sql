@@ -1,6 +1,6 @@
--- Rango de edad: cada persona dice hasta cuántos años mayor y hasta cuántos
+-- Rango de edad: cada persona dice (en "Mis preferencias", después del registro) hasta cuántos años mayor y hasta cuántos
 -- años menor acepta. 0 = no acepta a alguien mayor (o menor). Vacío = sin
--- límite (solo perfiles creados antes de este cambio).
+-- límite (mientras la persona no lo defina).
 alter table profiles add column if not exists age_older_max   smallint check (age_older_max   between 0 and 60);
 alter table profiles add column if not exists age_younger_max smallint check (age_younger_max between 0 and 60);
 

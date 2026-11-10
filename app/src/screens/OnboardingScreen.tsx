@@ -41,8 +41,6 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
   const [birth, setBirth] = useState('');
   const [gender, setGender] = useState<'hombre' | 'mujer' | null>(null);
   const [alcaldia, setAlcaldia] = useState<string | null>(null);
-  const [olderMax, setOlderMax] = useState('');
-  const [youngerMax, setYoungerMax] = useState('');
   // Intención y tipo
   const [intent, setIntent] = useState<Intent | null>(null);
   const [matchType, setMatchType] = useState<MatchType | null>(null);
@@ -78,9 +76,7 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
 
   const birthCheck = parseBirth(birth);
   const phoneDigits = phone.replace(/\D/g, '');
-  const yearsOk = (v: string) => /^\d{1,2}$/.test(v.trim()) && +v <= 60;
-  const datosOk = firstName.trim() && lastName.trim() && phoneDigits.length === 10 && birthCheck.iso && gender && alcaldia
-    && yearsOk(olderMax) && yearsOk(youngerMax);
+  const datosOk = firstName.trim() && lastName.trim() && phoneDigits.length === 10 && birthCheck.iso && gender && alcaldia;
   const filtrosOk = hasKids !== null && kidsPref && ownPolitics && politicsPref && ownReligion && religionPref && sensConsent;
   const detailsOk = interests.every(i => (details[i] ?? []).length > 0);
   const quizOk = interests.length >= 3 && detailsOk && career && jobTitle.trim() && LINKEDIN_RE.test(linkedin.trim()) && salary;
@@ -94,7 +90,6 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
         phone: `+52${phoneDigits}`, birthdate: birthCheck.iso, gender, seeking_gender: gender === 'hombre' ? 'mujer' : 'hombre',
         intent, match_type: matchType, activities: activities.trim() || null, personality,
         career_level: career, job_title: jobTitle.trim(), linkedin_url: linkedin.trim(), alcaldia,
-        age_older_max: +olderMax, age_younger_max: +youngerMax,
       });
       if (e1) throw e1;
 
@@ -186,13 +181,6 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
         onToggle={v => setGender(v === 'Hombre' ? 'hombre' : 'mujer')} />
       <Label>¿En qué alcaldía vives o pasas más tiempo?</Label>
       <Chips options={ALCALDIAS} selected={alcaldia ? [alcaldia] : []} onToggle={setAlcaldia} />
-      <Label>Diferencia de edad que aceptas</Label>
-      <Field label="¿Hasta cuántos años mayor que tú?" value={olderMax} onChangeText={setOlderMax} keyboardType="number-pad"
-        maxLength={2} placeholder="Ej. 5" error={olderMax && !yearsOk(olderMax) ? 'Escribe un número de 0 a 60' : undefined}
-        hint="Pon 0 si no quieres conocer a alguien mayor que tú." />
-      <Field label="¿Hasta cuántos años menor que tú?" value={youngerMax} onChangeText={setYoungerMax} keyboardType="number-pad"
-        maxLength={2} placeholder="Ej. 3" error={youngerMax && !yearsOk(youngerMax) ? 'Escribe un número de 0 a 60' : undefined}
-        hint="Pon 0 si no quieres conocer a alguien menor que tú. Nunca te presentaremos a menores de 18." />
       <Button label="Continuar" onPress={() => go(1)} disabled={!datosOk} />
     </Card></Screen>
   );
