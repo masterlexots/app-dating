@@ -7,6 +7,7 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import MatchScreen from './src/screens/MatchScreen';
 import PreferencesScreen from './src/screens/PreferencesScreen';
+import PrivacyScreen from './src/screens/PrivacyScreen';
 import { Body, Card, Screen } from './src/components/ui';
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [openMatch, setOpenMatch] = useState<string | null>(null);
   const [showPrefs, setShowPrefs] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -38,12 +40,14 @@ export default function App() {
     screen = <AuthScreen />;
   } else if (!hasProfile && !onboardingDone) {
     screen = <OnboardingScreen userId={session.user.id} email={session.user.email ?? ''} onDone={() => setOnboardingDone(true)} />;
+  } else if (showPrivacy) {
+    screen = <PrivacyScreen onBack={() => setShowPrivacy(false)} />;
   } else if (showPrefs) {
     screen = <PreferencesScreen userId={session.user.id} onBack={() => setShowPrefs(false)} />;
   } else if (openMatch) {
     screen = <MatchScreen matchId={openMatch} userId={session.user.id} onBack={() => setOpenMatch(null)} />;
   } else {
-    screen = <HomeScreen userId={session.user.id} onOpenMatch={setOpenMatch} onOpenPrefs={() => setShowPrefs(true)} />;
+    screen = <HomeScreen userId={session.user.id} onOpenMatch={setOpenMatch} onOpenPrefs={() => setShowPrefs(true)} onOpenPrivacy={() => setShowPrivacy(true)} />;
   }
 
   return <>{screen}<StatusBar style="auto" /></>;

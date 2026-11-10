@@ -1046,9 +1046,9 @@ $$;
 -- app_settings sin políticas es intencional: solo la lee el backend.
 
 -- ===== migrations/20261110000007_rango_de_edad.sql =====
--- Rango de edad: cada persona dice hasta cuántos años mayor y hasta cuántos
+-- Rango de edad: cada persona dice (en "Mis preferencias", después del registro) hasta cuántos años mayor y hasta cuántos
 -- años menor acepta. 0 = no acepta a alguien mayor (o menor). Vacío = sin
--- límite (solo perfiles creados antes de este cambio).
+-- límite (mientras la persona no lo defina).
 alter table profiles add column if not exists age_older_max   smallint check (age_older_max   between 0 and 60);
 alter table profiles add column if not exists age_younger_max smallint check (age_younger_max between 0 and 60);
 
@@ -1083,3 +1083,16 @@ $$;
 
 revoke execute on function age_ok(uuid, uuid) from public, anon, authenticated;
 grant execute on function age_ok(uuid, uuid) to service_role;
+
+-- ===== migrations/20261110000008_consentimientos.sql =====
+-- Evidencia de consentimientos: versión y fecha del aviso de privacidad
+-- aceptado, y consentimiento expreso para el rango de ingreso (dato patrimonial).
+alter table profiles        add column if not exists privacy_version     text;
+alter table profiles        add column if not exists privacy_accepted_at timestamptz;
+alter table profile_private add column if not exists salary_consent_at   timestamptz;
+
+-- Si guarda un rango de ingreso, debe existir su consentimiento.
+alter table profile_private drop constraint if exists ingreso_con_consentimiento;
+alter table profile_private add constraint ingreso_con_consentimiento check (
+  salary_range is null or salary_range = 'Prefiero no decir' or salary_consent_at is not null
+) not valid;  -- no se valida contra perfiles de prueba creados antes de este cambio

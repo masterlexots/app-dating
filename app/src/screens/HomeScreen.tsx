@@ -16,8 +16,8 @@ type CycleStatus = {
   eligible: boolean;
 };
 
-export default function HomeScreen({ userId, onOpenMatch, onOpenPrefs }: {
-  userId: string; onOpenMatch: (id: string) => void; onOpenPrefs: () => void;
+export default function HomeScreen({ userId, onOpenMatch, onOpenPrefs, onOpenPrivacy }: {
+  userId: string; onOpenMatch: (id: string) => void; onOpenPrefs: () => void; onOpenPrivacy: () => void;
 }) {
   const t = useTheme();
   const [s, setS] = useState<CycleStatus | null>(null);
@@ -131,6 +131,7 @@ export default function HomeScreen({ userId, onOpenMatch, onOpenPrefs }: {
 
       <Button label="Mis preferencias" kind="ghost" onPress={onOpenPrefs} />
       <Button label="Actualizar" kind="ghost" onPress={load} />
+      <Button label="Aviso de privacidad" kind="ghost" onPress={onOpenPrivacy} />
       <Button label="Cerrar sesión" kind="ghost" onPress={() => supabase.auth.signOut()} />
     </Screen>
   );

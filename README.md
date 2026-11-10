@@ -64,4 +64,5 @@ select id, 'prueba', 'prueba', 'Tarjeta de prueba' from profiles where email = '
 - Tarea programada: `propose_weekly_matches()` cada lunes y `run_maintenance()` cada 15 minutos.
 - Notificaciones push.
 - Volver al inicio de sesión por celular (SMS) y verificar el número (`phone_verified`).
+- Completar el aviso de privacidad (`app/src/content/aviso-privacidad.json`; copia para revisión en `docs/aviso-de-privacidad.md`, se regenera con `node docs/generar_aviso.js`).
 - Revisión legal y auditoría de seguridad antes de lanzar.

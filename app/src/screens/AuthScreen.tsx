@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { EMAIL_RE } from '../lib/catalog';
 import { Body, Button, Card, Chips, Eyebrow, Field, Note, Screen, Title } from '../components/ui';
+import PrivacyScreen from './PrivacyScreen';
 
 // Inicio de sesión TEMPORAL con correo y contraseña, solo para desarrollo.
 // Requiere desactivar "Confirm email" en Supabase. Antes de lanzar se vuelve
@@ -12,6 +13,7 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   const clean = email.trim().toLowerCase();
   const ok = EMAIL_RE.test(clean) && password.length >= 8;
@@ -36,6 +38,8 @@ export default function AuthScreen() {
     // Con sesión, App.tsx avanza solo.
   }
 
+  if (showPrivacy) return <PrivacyScreen onBack={() => setShowPrivacy(false)} />;
+
   return (
     <Screen>
       <Card>
@@ -58,6 +62,7 @@ export default function AuthScreen() {
         <Button label={mode === 'crear' ? 'Crear cuenta' : 'Entrar'} onPress={submit} loading={busy} disabled={!ok} />
         <Body muted small>Versión de prueba. En la versión final se entra con tu celular.</Body>
       </Card>
+      <Button label="Aviso de privacidad" kind="ghost" onPress={() => setShowPrivacy(true)} />
     </Screen>
   );
 }

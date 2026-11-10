@@ -7,6 +7,7 @@ import {
   ALCALDIAS, CAREER_LEVELS, INTENTS, INTEREST_DETAILS, Intent, LINKEDIN_RE, MATCH_TYPES, MatchType,
   NO_SALARY, PERSONALITY, POLITICS, RELIGIONS, RELIGION_PREFS, SALARY,
 } from '../lib/catalog';
+import PrivacyScreen, { PRIVACY_VERSION } from './PrivacyScreen';
 import {
   Body, Button, Card, Chips, Eyebrow, Field, Label, Note, Option, Row, Screen, Steps, Title,
 } from '../components/ui';
@@ -66,6 +67,8 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
   const [photos, setPhotos] = useState<{ path: string; preview: string }[]>([]);
   // Consentimiento final
   const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [salaryConsent, setSalaryConsent] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   const flow: Step[] = useMemo(
     () => ['datos', 'intencion', 'tipo', ...(intent === 'formal' ? ['filtros' as Step] : []), 'cuestionario', 'fotos', 'pago', 'verificacion'],
@@ -76,10 +79,11 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
 
   const birthCheck = parseBirth(birth);
   const phoneDigits = phone.replace(/\D/g, '');
-  const datosOk = firstName.trim() && lastName.trim() && phoneDigits.length === 10 && birthCheck.iso && gender && alcaldia;
+  const datosOk = firstName.trim() && lastName.trim() && phoneDigits.length === 10 && birthCheck.iso && gender && alcaldia && privacyConsent;
   const filtrosOk = hasKids !== null && kidsPref && ownPolitics && politicsPref && ownReligion && religionPref && sensConsent;
   const detailsOk = interests.every(i => (details[i] ?? []).length > 0);
-  const quizOk = interests.length >= 3 && detailsOk && career && jobTitle.trim() && LINKEDIN_RE.test(linkedin.trim()) && salary;
+  const quizOk = interests.length >= 3 && detailsOk && career && jobTitle.trim() && LINKEDIN_RE.test(linkedin.trim()) && salary
+    && (salary === NO_SALARY || salaryConsent);
 
   // Guarda el perfil completo al terminar el cuestionario (las fotos necesitan que exista).
   async function saveProfile() {
@@ -90,11 +94,15 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
         phone: `+52${phoneDigits}`, birthdate: birthCheck.iso, gender, seeking_gender: gender === 'hombre' ? 'mujer' : 'hombre',
         intent, match_type: matchType, activities: activities.trim() || null, personality,
         career_level: career, job_title: jobTitle.trim(), linkedin_url: linkedin.trim(), alcaldia,
+        privacy_version: PRIVACY_VERSION, privacy_accepted_at: new Date().toISOString(),
       });
       if (e1) throw e1;
 
       const { error: e2 } = await supabase.from('profile_private')
-        .upsert({ profile_id: userId, salary_currency: salary === NO_SALARY ? null : currency, salary_range: salary });
+        .upsert({
+          profile_id: userId, salary_currency: salary === NO_SALARY ? null : currency, salary_range: salary,
+          salary_consent_at: salary === NO_SALARY ? null : new Date().toISOString(),
+        });
       if (e2) throw e2;
 
       await supabase.from('interests').delete().eq('profile_id', userId);
@@ -165,6 +173,8 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
   const header = <Steps current={idx} total={flow.length} />;
   const err = error && <Note kind="bad">{error}</Note>;
 
+  if (showPrivacy) return <PrivacyScreen onBack={() => setShowPrivacy(false)} />;
+
   if (step === 'datos') return (
     <Screen>{header}<Card>
       <Eyebrow>Paso 1 · Registro</Eyebrow><Title>Crea tu cuenta</Title>
@@ -181,6 +191,10 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
         onToggle={v => setGender(v === 'Hombre' ? 'hombre' : 'mujer')} />
       <Label>¿En qué alcaldía vives o pasas más tiempo?</Label>
       <Chips options={ALCALDIAS} selected={alcaldia ? [alcaldia] : []} onToggle={setAlcaldia} />
+      <Option selected={privacyConsent} onPress={() => setPrivacyConsent(!privacyConsent)}
+        title="Leí y acepto el aviso de privacidad"
+        subtitle="Explica qué datos usamos, para qué y cómo ejercer tus derechos." />
+      <Button label="Leer aviso de privacidad" kind="ghost" onPress={() => setShowPrivacy(true)} />
       <Button label="Continuar" onPress={() => go(1)} disabled={!datosOk} />
     </Card></Screen>
   );
@@ -227,7 +241,8 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
       <Chips options={RELIGION_PREFS} selected={religionPref ? [religionPref] : []} onToggle={setReligionPref} />
       <Option selected={sensConsent} onPress={() => setSensConsent(!sensConsent)}
         title="Autorizo el uso de mi religión y opinión política"
-        subtitle="Solo para encontrar mi match. Nunca se muestran en mi perfil. Firmaré esta autorización en la verificación." />
+        subtitle="Son datos sensibles. Solo se usan para encontrar mi match y nunca se muestran en mi perfil." />
+      <Button label="Leer aviso de privacidad" kind="ghost" onPress={() => setShowPrivacy(true)} />
       <Row><Button label="Atrás" kind="ghost" onPress={() => go(-1)} /><Button label="Continuar" onPress={() => go(1)} disabled={!filtrosOk} /></Row>
     </Card></Screen>
   );
@@ -272,6 +287,11 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
       <Chips options={['MXN', 'USD']} selected={[currency]} onToggle={v => { if (v !== currency) { setCurrency(v as 'MXN' | 'USD'); setSalary(null); } }} />
       <Chips options={[...SALARY[currency], NO_SALARY]} selected={salary ? [salary] : []} onToggle={setSalary} />
       <Body muted small>Nunca se muestra en tu perfil. Solo ayuda a calcular compatibilidad.</Body>
+      {salary && salary !== NO_SALARY && (
+        <Option selected={salaryConsent} onPress={() => setSalaryConsent(!salaryConsent)}
+          title="Autorizo el uso de mi rango de ingreso"
+          subtitle="Solo para calcular compatibilidad. Puedes elegir “Prefiero no decir”." />
+      )}
       {interests.length >= 3 && !detailsOk && <Body muted small>Elige al menos un detalle en cada interés.</Body>}
       {err}
       <Row><Button label="Atrás" kind="ghost" onPress={() => go(-1)} /><Button label="Guardar y continuar" onPress={saveProfile} disabled={!quizOk} loading={busy} /></Row>
@@ -318,10 +338,7 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
       <Eyebrow>Verificación</Eyebrow><Title>Confirmemos que eres tú</Title>
       <Body muted>Todas las personas pasan por esta verificación antes de recibir un match: identificación oficial y selfie en vivo.</Body>
       <Note kind="warn">Pendiente de integración: aquí se abrirá el proveedor de verificación de identidad. Mientras tanto, tu cuenta queda en revisión.</Note>
-      <Option selected={privacyConsent} onPress={() => setPrivacyConsent(!privacyConsent)}
-        title="Acepto el aviso de privacidad"
-        subtitle={intent === 'formal' ? 'Incluye la autorización expresa para tratar mis datos sensibles.' : undefined} />
-      <Row><Button label="Atrás" kind="ghost" onPress={() => go(-1)} /><Button label="Terminar" onPress={onDone} disabled={!privacyConsent} /></Row>
+      <Row><Button label="Atrás" kind="ghost" onPress={() => go(-1)} /><Button label="Terminar" onPress={onDone} /></Row>
     </Card></Screen>
   );
 }
