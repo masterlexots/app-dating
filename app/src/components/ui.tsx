@@ -56,7 +56,11 @@ export function Button({ label, onPress, kind = 'primary', disabled, loading }: 
 }
 
 export function Row({ children }: { children: ReactNode }) {
-  return <View style={s.row}>{children}</View>;
+  return (
+    <View style={s.row}>
+      {React.Children.map(children, c => (c ? <View style={s.rowItem}>{c}</View> : null))}
+    </View>
+  );
 }
 
 export function Option({ title, subtitle, selected, onPress }: {
@@ -151,9 +155,10 @@ const s = StyleSheet.create({
   eyebrow: { fontSize: 11, letterSpacing: 0.9, textTransform: 'uppercase', fontWeight: '600' },
   h1: { fontSize: 28, lineHeight: 32, fontWeight: '700' },
   h2: { fontSize: 21, lineHeight: 26, fontWeight: '700' },
-  btn: { borderRadius: 12, paddingVertical: 13, paddingHorizontal: 16, borderWidth: 1.5, alignItems: 'center', flexGrow: 1, flexBasis: 140 },
+  btn: { borderRadius: 12, paddingVertical: 13, paddingHorizontal: 16, borderWidth: 1.5, alignItems: 'center' },
   btnText: { fontWeight: '600', fontSize: 15 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  rowItem: { flexGrow: 1, flexBasis: 140 },
   opt: { flexDirection: 'row', gap: 12, padding: 14, borderWidth: 1.5, borderRadius: 12, alignItems: 'flex-start' },
   dot: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, marginTop: 2, alignItems: 'center', justifyContent: 'center' },
   dotIn: { width: 8, height: 8, borderRadius: 4 },
