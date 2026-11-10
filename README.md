@@ -33,7 +33,9 @@ Los valores ajustables (horarios, plazos, precio, límites) están en la tabla `
 
 1. En tu proyecto de Supabase abre **SQL Editor**.
 2. Ejecuta, en orden, cada archivo de `supabase/migrations/`.
-3. En **Authentication > Providers > Phone**, activa el inicio de sesión por SMS y conecta un proveedor de SMS.
+3. Inicio de sesión (temporal, mientras no haya proveedor de SMS): por correo con código.
+   En **Authentication > Emails**, en las plantillas **Magic Link** y **Confirm signup**, agrega `{{ .Token }}`
+   para que el correo incluya el código. Antes de lanzar se cambia a celular con Twilio.
 
 ### 2. App
 
@@ -61,4 +63,5 @@ select id, 'prueba', 'prueba', 'Tarjeta de prueba' from profiles where email = '
 - Panel interno: curadores, reservas con restaurantes, alertas de seguridad y reportes.
 - Tarea programada: `propose_weekly_matches()` cada lunes y `run_maintenance()` cada 15 minutos.
 - Notificaciones push.
+- Volver al inicio de sesión por celular (SMS) y verificar el número (`phone_verified`).
 - Revisión legal y auditoría de seguridad antes de lanzar.

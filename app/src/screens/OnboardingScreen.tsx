@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
 import {
-  ALCALDIAS, CAREER_LEVELS, EMAIL_RE, INTENTS, INTEREST_DETAILS, Intent, LINKEDIN_RE, MATCH_TYPES, MatchType,
+  ALCALDIAS, CAREER_LEVELS, INTENTS, INTEREST_DETAILS, Intent, LINKEDIN_RE, MATCH_TYPES, MatchType,
   NO_SALARY, PERSONALITY, POLITICS, RELIGIONS, RELIGION_PREFS, SALARY,
 } from '../lib/catalog';
 import {
@@ -28,7 +28,7 @@ function parseBirth(s: string): { iso?: string; error?: string } {
   return { iso: `${y}-${mo}-${d}` };
 }
 
-export default function OnboardingScreen({ userId, phone, onDone }: { userId: string; phone: string; onDone: () => void }) {
+export default function OnboardingScreen({ userId, email, onDone }: { userId: string; email: string; onDone: () => void }) {
   const t = useTheme();
   const [step, setStep] = useState<Step>('datos');
   const [busy, setBusy] = useState(false);
@@ -37,7 +37,7 @@ export default function OnboardingScreen({ userId, phone, onDone }: { userId: st
   // Datos
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [birth, setBirth] = useState('');
   const [gender, setGender] = useState<'hombre' | 'mujer' | null>(null);
   const [alcaldia, setAlcaldia] = useState<string | null>(null);
@@ -75,7 +75,8 @@ export default function OnboardingScreen({ userId, phone, onDone }: { userId: st
   const go = (dir: 1 | -1) => { setError(null); setStep(flow[idx + dir]); };
 
   const birthCheck = parseBirth(birth);
-  const datosOk = firstName.trim() && lastName.trim() && EMAIL_RE.test(email.trim()) && birthCheck.iso && gender && alcaldia;
+  const phoneDigits = phone.replace(/\D/g, '');
+  const datosOk = firstName.trim() && lastName.trim() && phoneDigits.length === 10 && birthCheck.iso && gender && alcaldia;
   const filtrosOk = hasKids !== null && kidsPref && ownPolitics && politicsPref && ownReligion && religionPref && sensConsent;
   const detailsOk = interests.every(i => (details[i] ?? []).length > 0);
   const quizOk = interests.length >= 3 && detailsOk && career && jobTitle.trim() && LINKEDIN_RE.test(linkedin.trim()) && salary;
@@ -86,7 +87,7 @@ export default function OnboardingScreen({ userId, phone, onDone }: { userId: st
     try {
       const { error: e1 } = await supabase.from('profiles').upsert({
         id: userId, first_name: firstName.trim(), last_name: lastName.trim(), email: email.trim().toLowerCase(),
-        phone, birthdate: birthCheck.iso, gender, seeking_gender: gender === 'hombre' ? 'mujer' : 'hombre',
+        phone: `+52${phoneDigits}`, birthdate: birthCheck.iso, gender, seeking_gender: gender === 'hombre' ? 'mujer' : 'hombre',
         intent, match_type: matchType, activities: activities.trim() || null, personality,
         career_level: career, job_title: jobTitle.trim(), linkedin_url: linkedin.trim(), alcaldia,
       });
@@ -169,10 +170,10 @@ export default function OnboardingScreen({ userId, phone, onDone }: { userId: st
       <Eyebrow>Paso 1 · Registro</Eyebrow><Title>Crea tu cuenta</Title>
       <Field label="Nombre" value={firstName} onChangeText={setFirstName} autoComplete="given-name" />
       <Field label="Apellido" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
-      <Field label="Correo electrónico" value={email} onChangeText={setEmail} keyboardType="email-address"
-        autoCapitalize="none" autoComplete="email" placeholder="tu@correo.com"
-        error={email && !EMAIL_RE.test(email.trim()) ? 'Revisa el correo' : undefined}
-        hint="Para avisos y recibos. En tu perfil solo se muestra tu nombre." />
+      <Field label="Número de celular (+52)" value={phone} onChangeText={setPhone} keyboardType="number-pad"
+        maxLength={10} autoComplete="tel" placeholder="10 dígitos"
+        error={phone && phoneDigits.length !== 10 ? 'Escribe tu celular a 10 dígitos' : undefined}
+        hint={`Para avisos de tus citas. En tu perfil solo se muestra tu nombre. Entraste con ${email}.`} />
       <Field label="Fecha de nacimiento" value={birth} onChangeText={setBirth} placeholder="DD/MM/AAAA"
         keyboardType="numbers-and-punctuation" maxLength={10} error={birth.length === 10 ? birthCheck.error : undefined} />
       <Label>Soy</Label>

@@ -35,7 +35,7 @@ export default function App() {
   } else if (!session) {
     screen = <AuthScreen />;
   } else if (!hasProfile && !onboardingDone) {
-    screen = <OnboardingScreen userId={session.user.id} phone={session.user.phone ?? ''} onDone={() => setOnboardingDone(true)} />;
+    screen = <OnboardingScreen userId={session.user.id} email={session.user.email ?? ''} onDone={() => setOnboardingDone(true)} />;
   } else if (openMatch) {
     screen = <MatchScreen matchId={openMatch} userId={session.user.id} onBack={() => setOpenMatch(null)} />;
   } else {

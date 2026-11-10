@@ -10,11 +10,11 @@ insert into auth.users values
 
 insert into profiles (id, first_name, last_name, email, phone, birthdate, gender, seeking_gender, intent, match_type, personality, career_level, alcaldia)
 values
- ('00000000-0000-0000-0000-00000000000a','Luis','Pérez','l@x.mx','5500000001','1993-01-01','hombre','mujer','formal','comun','{"social":4,"plan":4,"conflict":3,"ritmo":4}','3 a 7 años','Benito Juárez'),
- ('00000000-0000-0000-0000-00000000000b','Mariana','Ruiz','m@x.mx','5500000002','1995-01-01','mujer','hombre','formal','comun','{"social":4,"plan":5,"conflict":3,"ritmo":4}','3 a 7 años','Coyoacán'),
- ('00000000-0000-0000-0000-00000000000c','Diego','Soto','d@x.mx','5500000003','1990-01-01','hombre','mujer','casual','comun','{}','8 a 15 años','Cuauhtémoc'),
- ('00000000-0000-0000-0000-00000000000d','Ana','Lara','a@x.mx','5500000004','1994-01-01','mujer','hombre','casual','complemento','{}','3 a 7 años','Miguel Hidalgo'),
- ('00000000-0000-0000-0000-00000000000e','Sofía','Gil','s@x.mx','5500000005','1996-01-01','mujer','hombre','casual','comun','{}','3 a 7 años','Roma');
+ ('00000000-0000-0000-0000-00000000000a','Luis','Pérez','l@x.mx','+525500000001','1993-01-01','hombre','mujer','formal','comun','{"social":4,"plan":4,"conflict":3,"ritmo":4}','3 a 7 años','Benito Juárez'),
+ ('00000000-0000-0000-0000-00000000000b','Mariana','Ruiz','m@x.mx','+525500000002','1995-01-01','mujer','hombre','formal','comun','{"social":4,"plan":5,"conflict":3,"ritmo":4}','3 a 7 años','Coyoacán'),
+ ('00000000-0000-0000-0000-00000000000c','Diego','Soto','d@x.mx','+525500000003','1990-01-01','hombre','mujer','casual','comun','{}','8 a 15 años','Cuauhtémoc'),
+ ('00000000-0000-0000-0000-00000000000d','Ana','Lara','a@x.mx','+525500000004','1994-01-01','mujer','hombre','casual','complemento','{}','3 a 7 años','Miguel Hidalgo'),
+ ('00000000-0000-0000-0000-00000000000e','Sofía','Gil','s@x.mx','+525500000005','1996-01-01','mujer','hombre','casual','comun','{}','3 a 7 años','Roma');
 
 update profiles set status = 'active', identity_verified = true;
 insert into photos (profile_id, storage_path, position)

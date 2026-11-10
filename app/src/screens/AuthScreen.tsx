@@ -1,36 +1,44 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { EMAIL_RE } from '../lib/catalog';
 import { Body, Button, Card, Eyebrow, Field, Note, Screen, Title } from '../components/ui';
 
-// Inicio de sesión y registro con número de celular (+52) y código por SMS.
+// Inicio de sesión y registro con correo y código de un solo uso.
+// Temporal mientras se activa el proveedor de SMS; antes de lanzar se
+// vuelve a usar el celular (ver historial de este archivo).
 export default function AuthScreen() {
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const digits = phone.replace(/\D/g, '');
-  const e164 = `+52${digits}`;
+  const clean = email.trim().toLowerCase();
 
   async function sendCode() {
     setError(null);
-    if (digits.length !== 10) return setError('Escribe tu número de celular a 10 dígitos.');
+    if (!EMAIL_RE.test(clean)) return setError('Revisa tu correo electrónico.');
     setBusy(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone: e164 });
+    const { error } = await supabase.auth.signInWithOtp({ email: clean, options: { shouldCreateUser: true } });
     setBusy(false);
-    if (error) return setError('No pudimos enviar el SMS. Intenta de nuevo en un momento.');
+    if (error) {
+      return setError(/rate|limit/i.test(error.message)
+        ? 'Se enviaron demasiados correos en poco tiempo. Espera unos minutos e inténtalo de nuevo.'
+        : 'No pudimos enviar el correo. Intenta de nuevo en un momento.');
+    }
     setSent(true);
   }
 
   async function verify() {
     setError(null);
     setBusy(true);
-    const { error } = await supabase.auth.verifyOtp({ phone: e164, token: code.trim(), type: 'sms' });
+    const { error } = await supabase.auth.verifyOtp({ email: clean, token: code.trim(), type: 'email' });
     setBusy(false);
-    if (error) setError('El código no coincide o ya venció. Revisa el SMS o pide uno nuevo.');
+    if (error) setError('El código no coincide o ya venció. Revisa el correo o pide uno nuevo.');
     // Al verificar, App.tsx detecta la sesión y avanza solo.
   }
+
+  const codeOk = /^\d{6,8}$/.test(code.trim());
 
   return (
     <Screen>
@@ -43,23 +51,24 @@ export default function AuthScreen() {
         </Body>
       </Card>
       <Card>
-        <Title>Entra con tu celular</Title>
+        <Title>Entra con tu correo</Title>
         <Field
-          label="Número de celular (+52)" placeholder="10 dígitos" keyboardType="number-pad" maxLength={10}
-          value={phone} onChangeText={setPhone} editable={!sent} autoComplete="tel"
-          hint="Te enviamos un código por SMS. Nunca se muestra en tu perfil."
+          label="Correo electrónico" placeholder="tu@correo.com" keyboardType="email-address" autoCapitalize="none"
+          autoComplete="email" value={email} onChangeText={setEmail} editable={!sent}
+          hint="Te enviamos un código para entrar. Nunca se muestra en tu perfil."
         />
         {sent && (
-          <Field label="Código de 6 dígitos" keyboardType="number-pad" maxLength={6} value={code}
-            onChangeText={setCode} autoComplete="sms-otp" textContentType="oneTimeCode" />
+          <Field label="Código del correo" keyboardType="number-pad" maxLength={8} value={code}
+            onChangeText={setCode} autoComplete="one-time-code" textContentType="oneTimeCode"
+            hint="Revisa también la carpeta de spam." />
         )}
         {error && <Note kind="bad">{error}</Note>}
         {sent
           ? <>
-              <Button label="Verificar" onPress={verify} loading={busy} disabled={code.trim().length !== 6} />
-              <Button label="Cambiar número" kind="ghost" onPress={() => { setSent(false); setCode(''); }} />
+              <Button label="Entrar" onPress={verify} loading={busy} disabled={!codeOk} />
+              <Button label="Cambiar correo" kind="ghost" onPress={() => { setSent(false); setCode(''); }} />
             </>
-          : <Button label="Enviar código por SMS" onPress={sendCode} loading={busy} />}
+          : <Button label="Enviar código" onPress={sendCode} loading={busy} />}
       </Card>
     </Screen>
   );

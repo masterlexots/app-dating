@@ -1,7 +1,7 @@
 -- Todas las migraciones en un solo archivo, para pegar una sola vez en el SQL Editor de Supabase.
 -- Generado a partir de supabase/migrations/. Ejecútalo UNA sola vez en un proyecto nuevo.
 
--- ===== supabase/migrations/20261030000001_esquema_inicial.sql =====
+-- ===== migrations/20261030000001_esquema_inicial.sql =====
 -- =====================================================================
 -- Esquema inicial: perfiles, cuestionario, matches, citas, pagos,
 -- chat, seguridad, feedback e inasistencias.
@@ -400,7 +400,7 @@ create policy reportes_crear on reports for insert to authenticated with check (
 -- Las escrituras de matches, respuestas, pagos, llegadas y feedback pasan
 -- por las funciones de reglas de negocio (siguiente migración).
 
--- ===== supabase/migrations/20261030000002_reglas_de_negocio.sql =====
+-- ===== migrations/20261030000002_reglas_de_negocio.sql =====
 -- =====================================================================
 -- Reglas de negocio. Toda la lógica que decide estados vive aquí, en
 -- la base de datos, para que la app no pueda saltarse ninguna regla.
@@ -951,7 +951,7 @@ to authenticated;
 
 grant execute on all functions in schema public to service_role;
 
--- ===== supabase/migrations/20261030000003_almacenamiento_fotos.sql =====
+-- ===== migrations/20261030000003_almacenamiento_fotos.sql =====
 -- Bucket privado de fotos. Ruta: <profile_id>/<archivo>
 -- Cada usuario sube y borra solo en su carpeta; puede ver las fotos de
 -- alguien solo si comparten un match visible.
@@ -971,7 +971,7 @@ create policy fotos_ver on storage.objects for select to authenticated
     or public.shares_visible_match(auth.uid(), ((storage.foldername(name))[1])::uuid)
   ));
 
--- ===== supabase/migrations/20261030000004_chat_en_tiempo_real.sql =====
+-- ===== migrations/20261030000004_chat_en_tiempo_real.sql =====
 -- Publica los mensajes del chat para que la app los reciba en tiempo real.
 do $$
 begin
@@ -979,3 +979,41 @@ begin
     alter publication supabase_realtime add table public.messages;
   end if;
 end $$;
+
+-- ===== migrations/20261110000005_celular_sin_verificar.sql =====
+-- Mientras no haya proveedor de SMS, el inicio de sesión es por correo y el
+-- celular se captura en el registro sin verificar. Esta columna indica si
+-- ya se verificó; solo la cambia el sistema.
+alter table profiles add column if not exists phone_verified boolean not null default false;
+
+alter table profiles drop constraint if exists celular_formato;
+alter table profiles add constraint celular_formato check (phone ~ '^\+52[0-9]{10}$');
+
+create or replace function proteger_campos_perfil() returns trigger
+language plpgsql as $$
+begin
+  if auth.role() = 'authenticated' then
+    if new.identity_verified is distinct from old.identity_verified
+       or new.linkedin_verified is distinct from old.linkedin_verified
+       or new.phone_verified    is distinct from old.phone_verified
+       or new.suspended_until   is distinct from old.suspended_until
+       or new.email             is distinct from old.email
+       or (new.status is distinct from old.status and not (
+            (old.status = 'active' and new.status = 'paused') or
+            (old.status = 'paused' and new.status = 'active')))
+    then
+      raise exception 'Este campo solo lo puede cambiar el sistema';
+    end if;
+  end if;
+  new.updated_at := now();
+  return new;
+end $$;
+
+-- Al crear el perfil, el correo debe ser el mismo con el que inició sesión.
+drop policy if exists perfil_propio_crear on profiles;
+create policy perfil_propio_crear on profiles for insert to authenticated
+  with check (
+    id = auth.uid() and status = 'onboarding' and identity_verified = false
+    and linkedin_verified = false and phone_verified = false
+    and lower(email) = lower(coalesce(auth.jwt() ->> 'email', email))
+  );
