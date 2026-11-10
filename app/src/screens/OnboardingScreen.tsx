@@ -304,7 +304,7 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
       <View style={st.grid}>
         {photos.map((p, i) => (
           <View key={p.path} style={[st.photo, { backgroundColor: t.bg }]}>
-            <Image source={{ uri: p.preview }} style={StyleSheet.absoluteFill} />
+            <Image source={{ uri: p.preview }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             {i === 0 && <T style={[st.badge, { backgroundColor: t.surface, color: t.ink }]}>Principal</T>}
             <Pressable onPress={() => removePhoto(i)} accessibilityLabel={`Quitar foto ${i + 1}`} style={[st.rm, { backgroundColor: t.surface }]}>
               <T style={{ color: t.ink, fontSize: 16 }}>×</T>

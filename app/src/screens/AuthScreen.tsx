@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { useTheme } from '../lib/theme';
 import { supabase } from '../lib/supabase';
 import { EMAIL_RE } from '../lib/catalog';
@@ -45,9 +45,9 @@ export default function AuthScreen() {
 
   return (
     <Screen>
-      {/* Foto de inicio: reemplazar este bloque por <Image source={require('../../assets/inicio.jpg')} … /> */}
-      <View style={[st.hero, { backgroundColor: t.soft }]}>
-        <T size={13} color={t.muted}>Foto de inicio (pendiente)</T>
+      <View style={st.hero}>
+        <Image source={require('../../assets/inicio.jpg')} style={{ width: '100%', height: '100%' }} resizeMode="cover"
+          accessibilityLabel="Hombre en su sala mirando su celular con una sonrisa" />
       </View>
       <View style={{ gap: 10, paddingHorizontal: 4 }}>
         <Eyebrow>Ciudad de México · 18+</Eyebrow>
@@ -75,5 +75,5 @@ export default function AuthScreen() {
 }
 
 const st = StyleSheet.create({
-  hero: { width: '100%', aspectRatio: 4 / 3, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  hero: { width: '100%', aspectRatio: 4 / 3, borderRadius: 28, overflow: 'hidden' },
 });
