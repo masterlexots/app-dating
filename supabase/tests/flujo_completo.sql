@@ -121,4 +121,18 @@ do $$ begin
 end $$;
 reset role;
 
+-- Rango de edad: Luis (1993) es 2 años mayor que Mariana (1995)
+update profiles set age_older_max = 1 where first_name = 'Mariana';
+update profiles set age_younger_max = 0 where first_name = 'Luis';
+do $$ begin
+  assert not age_ok('00000000-0000-0000-0000-00000000000b','00000000-0000-0000-0000-00000000000a'), 'Mariana solo acepta 1 año mayor';
+  assert not age_ok('00000000-0000-0000-0000-00000000000a','00000000-0000-0000-0000-00000000000b'), 'Luis no acepta menores';
+end $$;
+update profiles set age_older_max = 5 where first_name = 'Mariana';
+update profiles set age_younger_max = 3 where first_name = 'Luis';
+do $$ begin
+  assert age_ok('00000000-0000-0000-0000-00000000000b','00000000-0000-0000-0000-00000000000a'), 'Mariana acepta hasta 5 mayor';
+  assert age_ok('00000000-0000-0000-0000-00000000000a','00000000-0000-0000-0000-00000000000b'), 'Luis acepta hasta 3 menor';
+end $$;
+
 select 'TODAS LAS PRUEBAS PASARON' as resultado;
