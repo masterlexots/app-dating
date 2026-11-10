@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { rpc, supabase } from '../lib/supabase';
-import { useTheme } from '../lib/theme';
+import { F, useTheme } from '../lib/theme';
 import { fmtSlot, INTENTS, Intent } from '../lib/catalog';
-import { Body, Button, Card, Eyebrow, Field, Label, Note, Option, Row, Screen, Title } from '../components/ui';
+import { Body, Button, Card, Eyebrow, Field, Label, Note, Option, Row, Screen, Title, T } from '../components/ui';
 
 type Shared = Record<string, { ambos: string[]; tambien_le_gusta: string[] }>;
 type MatchCard = {
@@ -94,24 +94,30 @@ export default function MatchScreen({ matchId, userId, onBack }: { matchId: stri
       <Card>
         <Eyebrow>{card.intent === 'casual' ? 'Tu match de noche casual' : 'Tu match de la semana'}{card.attempt === 2 && card.status === 'proposed' ? ' · segundo intento de horario' : ''}</Eyebrow>
         {photoUrls.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={st.gallery}
+            contentContainerStyle={{ gap: 8 }}>
             {photoUrls.map(u => <Image key={u} source={{ uri: u }} style={st.photo} accessibilityLabel={`Foto de ${p.first_name}`} />)}
           </ScrollView>
         )}
-        <Title>{p.first_name}, {p.age}</Title>
+        <T weight="black" size={44} style={{ lineHeight: 44, letterSpacing: -1.5 }}>{p.first_name}, {p.age}</T>
         <Body muted>{[p.alcaldia, p.job_title].filter(Boolean).join(' · ')}{p.linkedin_verified ? ' · Experiencia verificada' : ''}</Body>
-        <View style={[st.pill, { backgroundColor: t.okSoft }]}><Text style={{ color: t.ok, fontWeight: '600', fontSize: 13 }}>{Math.round(card.compatibility)}% compatible</Text></View>
-        {p.activities ? <Body>“{p.activities}”</Body> : null}
+        <View style={[st.pill, { backgroundColor: t.ink }]}><T weight="bold" size={13} color={t.bg}>{Math.round(card.compatibility)}% compatible</T></View>
+        {p.activities ? (
+          <View style={[st.answer, { backgroundColor: t.soft }]}>
+            <T weight="semibold" size={13} color={t.accent}>Su fin de semana ideal</T>
+            <T weight="medium" size={18} style={{ lineHeight: 24 }}>{p.activities}</T>
+          </View>
+        ) : null}
         <Body muted small>Busca: {INTENTS[card.intent][0]}</Body>
         {Object.keys(card.shared).length > 0 && <>
           <Label>Lo que tienen en común</Label>
           {Object.entries(card.shared).map(([interest, d]) => (
-            <View key={interest} style={[st.common, { backgroundColor: t.bg, borderColor: t.line }]}>
-              <Text style={{ color: t.ink, fontSize: 14 }}>
-                <Text style={{ fontWeight: '700' }}>{interest}:</Text>{' '}
+            <View key={interest} style={[st.common, { backgroundColor: t.soft }]}>
+              <T style={{ color: t.ink, fontSize: 14 }}>
+                <T style={{ fontWeight: '700' }}>{interest}:</T>{' '}
                 {d.ambos.length ? `a los dos les gusta ${d.ambos.join(' y ').toLowerCase()}` : 'les interesa a los dos'}
-              </Text>
-              {d.tambien_le_gusta.length > 0 && <Text style={{ color: t.muted, fontSize: 12 }}>También le gusta: {d.tambien_le_gusta.join(', ').toLowerCase()}</Text>}
+              </T>
+              {d.tambien_le_gusta.length > 0 && <T style={{ color: t.muted, fontSize: 12 }}>También le gusta: {d.tambien_le_gusta.join(', ').toLowerCase()}</T>}
             </View>
           ))}
         </>}
@@ -215,20 +221,20 @@ function Chat({ matchId, userId, partner }: { matchId: string; userId: string; p
     <Card>
       <Label>Chat con {partner}</Label>
       <ScrollView ref={scroll} style={{ maxHeight: 280 }} onContentSizeChange={() => scroll.current?.scrollToEnd()} contentContainerStyle={{ gap: 8 }}>
-        <Text style={{ color: t.muted, fontSize: 12, textAlign: 'center' }}>Chat abierto para conocerse un poco antes de verse.</Text>
+        <T style={{ color: t.muted, fontSize: 12, textAlign: 'center' }}>Chat abierto para conocerse un poco antes de verse.</T>
         {msgs.map(m => {
           const me = m.sender_id === userId;
           return (
-            <View key={m.id} style={[st.msg, me ? { alignSelf: 'flex-end', backgroundColor: t.accent } : { alignSelf: 'flex-start', backgroundColor: t.bg, borderWidth: 1, borderColor: t.line }]}>
-              <Text style={{ color: me ? t.accentInk : t.ink, fontSize: 14 }}>{m.body}</Text>
+            <View key={m.id} style={[st.msg, me ? { alignSelf: 'flex-end', backgroundColor: t.primary } : { alignSelf: 'flex-start', backgroundColor: t.soft }]}>
+              <T style={{ color: me ? t.primaryInk : t.ink, fontSize: 15 }}>{m.body}</T>
             </View>
           );
         })}
       </ScrollView>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <TextInput value={text} onChangeText={setText} onSubmitEditing={send} placeholder="Escribe un mensaje" placeholderTextColor={t.muted}
-          style={[st.input, { color: t.ink, borderColor: t.line, backgroundColor: t.bg }]} />
-        <Pressable onPress={send} style={[st.send, { backgroundColor: t.accent }]}><Text style={{ color: t.accentInk, fontWeight: '600' }}>Enviar</Text></Pressable>
+          style={[st.input, { color: t.ink, backgroundColor: t.soft }]} />
+        <Pressable onPress={send} style={[st.send, { backgroundColor: t.primary }]}><T weight="bold" color={t.primaryInk}>Enviar</T></Pressable>
       </View>
     </Card>
   );
@@ -261,7 +267,7 @@ function Feedback({ matchId, arrivalOk, partner, onDone }: { matchId: string; ar
       <View style={{ flexDirection: 'row', gap: 6 }}>
         {[1, 2, 3, 4, 5].map(n => (
           <Pressable key={n} onPress={() => setStars(n)} accessibilityLabel={`${n} estrellas`}>
-            <Text style={{ fontSize: 30, color: n <= stars ? t.accent : t.line }}>★</Text>
+            <T style={{ fontSize: 30, color: n <= stars ? t.accent : t.line }}>★</T>
           </Pressable>
         ))}
       </View>
@@ -277,10 +283,12 @@ function Feedback({ matchId, arrivalOk, partner, onDone }: { matchId: string; ar
 }
 
 const st = StyleSheet.create({
-  photo: { width: 150, height: 200, borderRadius: 12 },
-  pill: { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999 },
-  common: { padding: 10, borderRadius: 10, borderWidth: 1, gap: 2 },
-  msg: { maxWidth: '80%', paddingVertical: 9, paddingHorizontal: 12, borderRadius: 14 },
-  input: { flex: 1, borderWidth: 1.5, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, fontSize: 15 },
-  send: { borderRadius: 10, paddingHorizontal: 16, justifyContent: 'center' },
+  gallery: { marginHorizontal: -22, marginTop: -22, borderTopLeftRadius: 28, borderTopRightRadius: 28 },
+  photo: { width: 390, maxWidth: '100%', aspectRatio: 4 / 5, borderRadius: 0 },
+  answer: { borderRadius: 20, padding: 16, gap: 6 },
+  pill: { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999 },
+  common: { padding: 14, borderRadius: 18, gap: 4 },
+  msg: { maxWidth: '80%', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20 },
+  input: { flex: 1, borderWidth: 0, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 16, fontSize: 15, fontFamily: F.regular },
+  send: { borderRadius: 999, paddingHorizontal: 18, justifyContent: 'center' },
 });

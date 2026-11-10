@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { useTheme } from '../lib/theme';
 import { supabase } from '../lib/supabase';
 import { EMAIL_RE } from '../lib/catalog';
-import { Body, Button, Card, Chips, Eyebrow, Field, Note, Screen, Title } from '../components/ui';
+import { Body, Button, Card, Chips, Eyebrow, Field, Note, Screen, T, Title } from '../components/ui';
 import PrivacyScreen from './PrivacyScreen';
 
 // Inicio de sesión TEMPORAL con correo y contraseña, solo para desarrollo.
 // Requiere desactivar "Confirm email" en Supabase. Antes de lanzar se vuelve
 // a usar el celular con código por SMS (ver historial de este archivo).
 export default function AuthScreen() {
+  const t = useTheme();
   const [mode, setMode] = useState<'entrar' | 'crear'>('entrar');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,14 +45,18 @@ export default function AuthScreen() {
 
   return (
     <Screen>
-      <Card>
+      {/* Foto de inicio: reemplazar este bloque por <Image source={require('../../assets/inicio.jpg')} … /> */}
+      <View style={[st.hero, { backgroundColor: t.soft }]}>
+        <T size={13} color={t.muted}>Foto de inicio (pendiente)</T>
+      </View>
+      <View style={{ gap: 10, paddingHorizontal: 4 }}>
         <Eyebrow>Ciudad de México · 18+</Eyebrow>
         <Title big>Un match por semana, elegido con cuidado.</Title>
         <Body muted>
           Sin swipes. La IA propone, una persona del equipo revisa y tú decides. Solo pagas si los dos aceptan y ya
           hay fecha para la cita, siempre en un restaurante o café aliado.
         </Body>
-      </Card>
+      </View>
       <Card>
         <Chips options={['Ya tengo cuenta', 'Crear cuenta']} selected={[mode === 'entrar' ? 'Ya tengo cuenta' : 'Crear cuenta']}
           onToggle={v => { setMode(v === 'Crear cuenta' ? 'crear' : 'entrar'); setError(null); }} />
@@ -66,3 +73,7 @@ export default function AuthScreen() {
     </Screen>
   );
 }
+
+const st = StyleSheet.create({
+  hero: { width: '100%', aspectRatio: 4 / 3, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+});

@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { rpc, supabase } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
 import { INTENTS, Intent } from '../lib/catalog';
-import { Body, Button, Card, Eyebrow, Note, Screen, Title } from '../components/ui';
+import { Body, Button, Card, Eyebrow, Note, Screen, Title, T } from '../components/ui';
 
 type CycleStatus = {
   status: 'onboarding' | 'active' | 'paused' | 'suspended';
@@ -60,14 +60,14 @@ export default function HomeScreen({ userId, onOpenMatch, onOpenPrefs, onOpenPri
   return (
     <Screen>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <Text style={{ color: t.ink, fontSize: 20, fontWeight: '700' }}>Una por Semana</Text>
+        <T style={{ color: t.ink, fontSize: 20, fontWeight: '700' }}>Una por Semana</T>
         {(s.status === 'active' || s.status === 'paused') && (
           <Pressable onPress={togglePause} disabled={busy} accessibilityRole="switch" accessibilityState={{ checked: s.status === 'paused' }}
             style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1.5,
               borderColor: s.status === 'paused' ? 'transparent' : t.line, backgroundColor: s.status === 'paused' ? t.warnSoft : 'transparent' }}>
-            <Text style={{ color: s.status === 'paused' ? t.warn : t.ink, fontWeight: '600', fontSize: 13 }}>
+            <T style={{ color: s.status === 'paused' ? t.warn : t.ink, fontWeight: '600', fontSize: 13 }}>
               {s.status === 'paused' ? 'En pausa' : s.intent === 'casual' ? 'Pausar' : 'Pausar ciclo'}
-            </Text>
+            </T>
           </Pressable>
         )}
       </View>

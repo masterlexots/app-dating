@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import {
+  useFonts, BricolageGrotesque_400Regular, BricolageGrotesque_500Medium, BricolageGrotesque_600SemiBold,
+  BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold,
+} from '@expo-google-fonts/bricolage-grotesque';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './src/lib/supabase';
 import AuthScreen from './src/screens/AuthScreen';
@@ -11,6 +15,10 @@ import PrivacyScreen from './src/screens/PrivacyScreen';
 import { Body, Card, Screen } from './src/components/ui';
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    BricolageGrotesque_400Regular, BricolageGrotesque_500Medium, BricolageGrotesque_600SemiBold,
+    BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold,
+  });
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [onboardingDone, setOnboardingDone] = useState(false);
@@ -34,6 +42,7 @@ export default function App() {
   }, [session]);
 
   let screen: React.ReactNode;
+  if (!fontsLoaded) return null;
   if (session === undefined || (session && hasProfile === null)) {
     screen = <Screen><Card><Body muted>Cargando…</Body></Card></Screen>;
   } else if (!session) {

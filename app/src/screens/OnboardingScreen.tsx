@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
@@ -9,8 +9,7 @@ import {
 } from '../lib/catalog';
 import PrivacyScreen, { PRIVACY_VERSION } from './PrivacyScreen';
 import {
-  Body, Button, Card, Chips, Eyebrow, Field, Label, Note, Option, Row, Screen, Steps, Title,
-} from '../components/ui';
+  Body, Button, Card, Chips, Eyebrow, Field, Label, Note, Option, Row, Screen, Steps, Title, T } from '../components/ui';
 
 type Step = 'datos' | 'intencion' | 'tipo' | 'filtros' | 'cuestionario' | 'fotos' | 'pago' | 'verificacion';
 
@@ -267,7 +266,7 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
       <Label>Personalidad</Label>
       {PERSONALITY.map(([k, a, b]) => (
         <View key={k} style={{ gap: 6 }}>
-          <View style={st.scaleLabels}><Text style={[st.scaleText, { color: t.muted }]}>{a}</Text><Text style={[st.scaleText, { color: t.muted, textAlign: 'right' }]}>{b}</Text></View>
+          <View style={st.scaleLabels}><T style={[st.scaleText, { color: t.muted }]}>{a}</T><T style={[st.scaleText, { color: t.muted, textAlign: 'right' }]}>{b}</T></View>
           <View style={st.scale}>
             {[1, 2, 3, 4, 5].map(n => (
               <Pressable key={n} onPress={() => setPersonality(p => ({ ...p, [k]: n }))} accessibilityLabel={`${a} a ${b}: ${n} de 5`}
@@ -306,15 +305,15 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
         {photos.map((p, i) => (
           <View key={p.path} style={[st.photo, { backgroundColor: t.bg }]}>
             <Image source={{ uri: p.preview }} style={StyleSheet.absoluteFill} />
-            {i === 0 && <Text style={[st.badge, { backgroundColor: t.surface, color: t.ink }]}>Principal</Text>}
+            {i === 0 && <T style={[st.badge, { backgroundColor: t.surface, color: t.ink }]}>Principal</T>}
             <Pressable onPress={() => removePhoto(i)} accessibilityLabel={`Quitar foto ${i + 1}`} style={[st.rm, { backgroundColor: t.surface }]}>
-              <Text style={{ color: t.ink, fontSize: 16 }}>×</Text>
+              <T style={{ color: t.ink, fontSize: 16 }}>×</T>
             </Pressable>
           </View>
         ))}
         {photos.length < MAX_PHOTOS && (
           <Pressable onPress={addPhotos} style={[st.photo, st.add, { borderColor: t.line }]}>
-            <Text style={{ color: t.accent, fontSize: 28 }}>+</Text><Text style={{ color: t.muted, fontSize: 13 }}>Agregar</Text>
+            <T style={{ color: t.accent, fontSize: 28 }}>+</T><T style={{ color: t.muted, fontSize: 13 }}>Agregar</T>
           </Pressable>
         )}
       </View>
