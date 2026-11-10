@@ -35,7 +35,7 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 }
 
 export function Title({ children, big }: { children: ReactNode; big?: boolean }) {
-  return <T weight="black" size={big ? 38 : 26} style={{ lineHeight: big ? 38 : 28, letterSpacing: big ? -1 : -0.5 }}>{children}</T>;
+  return <T weight="display" size={big ? 40 : 28} style={{ lineHeight: big ? 42 : 31, letterSpacing: -0.3 }}>{children}</T>;
 }
 
 export function Body({ children, muted, small }: { children: ReactNode; muted?: boolean; small?: boolean }) {

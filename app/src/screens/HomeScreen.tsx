@@ -60,7 +60,7 @@ export default function HomeScreen({ userId, onOpenMatch, onOpenPrefs, onOpenPri
   return (
     <Screen>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <T style={{ color: t.ink, fontSize: 20, fontWeight: '700' }}>Una por Semana</T>
+        <T weight="display" size={24}>Una por Semana</T>
         {(s.status === 'active' || s.status === 'paused') && (
           <Pressable onPress={togglePause} disabled={busy} accessibilityRole="switch" accessibilityState={{ checked: s.status === 'paused' }}
             style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1.5,

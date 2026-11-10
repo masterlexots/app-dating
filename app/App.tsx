@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import {
-  useFonts, BricolageGrotesque_400Regular, BricolageGrotesque_500Medium, BricolageGrotesque_600SemiBold,
-  BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold,
-} from '@expo-google-fonts/bricolage-grotesque';
+import { useFonts } from 'expo-font';
+import { DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
+import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './src/lib/supabase';
 import AuthScreen from './src/screens/AuthScreen';
@@ -16,8 +15,7 @@ import { Body, Card, Screen } from './src/components/ui';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    BricolageGrotesque_400Regular, BricolageGrotesque_500Medium, BricolageGrotesque_600SemiBold,
-    BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold,
+    DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold, DMSerifDisplay_400Regular,
   });
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);

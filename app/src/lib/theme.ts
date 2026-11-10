@@ -34,11 +34,13 @@ const dark: typeof light = {
 export type Theme = typeof light;
 export const useTheme = (): Theme => (useColorScheme() === 'dark' ? dark : light);
 
-// Tipografía: Bricolage Grotesque (se carga en App.tsx).
+// Tipografía: DM Serif Display para títulos y nombres, DM Sans para el resto
+// (se cargan en App.tsx).
 export const F = {
-  regular: 'BricolageGrotesque_400Regular',
-  medium: 'BricolageGrotesque_500Medium',
-  semibold: 'BricolageGrotesque_600SemiBold',
-  bold: 'BricolageGrotesque_700Bold',
-  black: 'BricolageGrotesque_800ExtraBold',
+  regular: 'DMSans_400Regular',
+  medium: 'DMSans_500Medium',
+  semibold: 'DMSans_600SemiBold',
+  bold: 'DMSans_700Bold',
+  black: 'DMSerifDisplay_400Regular',   // títulos
+  display: 'DMSerifDisplay_400Regular',
 };

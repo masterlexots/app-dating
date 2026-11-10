@@ -99,7 +99,7 @@ export default function MatchScreen({ matchId, userId, onBack }: { matchId: stri
             {photoUrls.map(u => <Image key={u} source={{ uri: u }} style={st.photo} accessibilityLabel={`Foto de ${p.first_name}`} />)}
           </ScrollView>
         )}
-        <T weight="black" size={44} style={{ lineHeight: 44, letterSpacing: -1.5 }}>{p.first_name}, {p.age}</T>
+        <T weight="display" size={44} style={{ lineHeight: 46, letterSpacing: -0.3 }}>{p.first_name}, {p.age}</T>
         <Body muted>{[p.alcaldia, p.job_title].filter(Boolean).join(' · ')}{p.linkedin_verified ? ' · Experiencia verificada' : ''}</Body>
         <View style={[st.pill, { backgroundColor: t.ink }]}><T weight="bold" size={13} color={t.bg}>{Math.round(card.compatibility)}% compatible</T></View>
         {p.activities ? (
