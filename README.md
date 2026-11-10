@@ -33,9 +33,9 @@ Los valores ajustables (horarios, plazos, precio, límites) están en la tabla `
 
 1. En tu proyecto de Supabase abre **SQL Editor**.
 2. Ejecuta, en orden, cada archivo de `supabase/migrations/`.
-3. Inicio de sesión (temporal, mientras no haya proveedor de SMS): por correo con código.
-   En **Authentication > Emails**, en las plantillas **Magic Link** y **Confirm signup**, agrega `{{ .Token }}`
-   para que el correo incluya el código. Antes de lanzar se cambia a celular con Twilio.
+3. Inicio de sesión (temporal, solo desarrollo): correo y contraseña.
+   En **Authentication > Sign In / Providers > Email**, desactiva **Confirm email**.
+   Antes de lanzar se cambia a celular con código por SMS (Twilio).
 
 ### 2. App
 

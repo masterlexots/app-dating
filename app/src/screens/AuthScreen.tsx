@@ -1,44 +1,40 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { EMAIL_RE } from '../lib/catalog';
-import { Body, Button, Card, Eyebrow, Field, Note, Screen, Title } from '../components/ui';
+import { Body, Button, Card, Chips, Eyebrow, Field, Note, Screen, Title } from '../components/ui';
 
-// Inicio de sesión y registro con correo y código de un solo uso.
-// Temporal mientras se activa el proveedor de SMS; antes de lanzar se
-// vuelve a usar el celular (ver historial de este archivo).
+// Inicio de sesión TEMPORAL con correo y contraseña, solo para desarrollo.
+// Requiere desactivar "Confirm email" en Supabase. Antes de lanzar se vuelve
+// a usar el celular con código por SMS (ver historial de este archivo).
 export default function AuthScreen() {
+  const [mode, setMode] = useState<'entrar' | 'crear'>('entrar');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const clean = email.trim().toLowerCase();
+  const ok = EMAIL_RE.test(clean) && password.length >= 8;
 
-  async function sendCode() {
+  async function submit() {
     setError(null);
-    if (!EMAIL_RE.test(clean)) return setError('Revisa tu correo electrónico.');
     setBusy(true);
-    const { error } = await supabase.auth.signInWithOtp({ email: clean, options: { shouldCreateUser: true } });
+    const { data, error } = mode === 'crear'
+      ? await supabase.auth.signUp({ email: clean, password })
+      : await supabase.auth.signInWithPassword({ email: clean, password });
     setBusy(false);
     if (error) {
-      return setError(/rate|limit/i.test(error.message)
-        ? 'Se enviaron demasiados correos en poco tiempo. Espera unos minutos e inténtalo de nuevo.'
-        : 'No pudimos enviar el correo. Intenta de nuevo en un momento.');
+      const m = error.message.toLowerCase();
+      if (m.includes('invalid login')) return setError('El correo o la contraseña no coinciden.');
+      if (m.includes('already registered')) return setError('Ese correo ya tiene cuenta. Usa "Ya tengo cuenta".');
+      if (m.includes('not confirmed')) return setError('Falta desactivar "Confirm email" en Supabase.');
+      return setError(error.message);
     }
-    setSent(true);
+    if (mode === 'crear' && !data.session) {
+      setError('La cuenta se creó, pero Supabase pide confirmar el correo. Desactiva "Confirm email" en Supabase.');
+    }
+    // Con sesión, App.tsx avanza solo.
   }
-
-  async function verify() {
-    setError(null);
-    setBusy(true);
-    const { error } = await supabase.auth.verifyOtp({ email: clean, token: code.trim(), type: 'email' });
-    setBusy(false);
-    if (error) setError('El código no coincide o ya venció. Revisa el correo o pide uno nuevo.');
-    // Al verificar, App.tsx detecta la sesión y avanza solo.
-  }
-
-  const codeOk = /^\d{6,8}$/.test(code.trim());
 
   return (
     <Screen>
@@ -51,24 +47,16 @@ export default function AuthScreen() {
         </Body>
       </Card>
       <Card>
-        <Title>Entra con tu correo</Title>
-        <Field
-          label="Correo electrónico" placeholder="tu@correo.com" keyboardType="email-address" autoCapitalize="none"
-          autoComplete="email" value={email} onChangeText={setEmail} editable={!sent}
-          hint="Te enviamos un código para entrar. Nunca se muestra en tu perfil."
-        />
-        {sent && (
-          <Field label="Código del correo" keyboardType="number-pad" maxLength={8} value={code}
-            onChangeText={setCode} autoComplete="one-time-code" textContentType="oneTimeCode"
-            hint="Revisa también la carpeta de spam." />
-        )}
+        <Chips options={['Ya tengo cuenta', 'Crear cuenta']} selected={[mode === 'entrar' ? 'Ya tengo cuenta' : 'Crear cuenta']}
+          onToggle={v => { setMode(v === 'Crear cuenta' ? 'crear' : 'entrar'); setError(null); }} />
+        <Field label="Correo electrónico" placeholder="tu@correo.com" keyboardType="email-address" autoCapitalize="none"
+          autoComplete="email" value={email} onChangeText={setEmail} />
+        <Field label="Contraseña" secureTextEntry value={password} onChangeText={setPassword}
+          autoComplete={mode === 'crear' ? 'new-password' : 'current-password'}
+          hint={mode === 'crear' ? 'Mínimo 8 caracteres.' : undefined} />
         {error && <Note kind="bad">{error}</Note>}
-        {sent
-          ? <>
-              <Button label="Entrar" onPress={verify} loading={busy} disabled={!codeOk} />
-              <Button label="Cambiar correo" kind="ghost" onPress={() => { setSent(false); setCode(''); }} />
-            </>
-          : <Button label="Enviar código" onPress={sendCode} loading={busy} />}
+        <Button label={mode === 'crear' ? 'Crear cuenta' : 'Entrar'} onPress={submit} loading={busy} disabled={!ok} />
+        <Body muted small>Versión de prueba. En la versión final se entra con tu celular.</Body>
       </Card>
     </Screen>
   );
