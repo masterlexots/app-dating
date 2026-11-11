@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-import { DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
-import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './src/lib/supabase';
 import AuthScreen from './src/screens/AuthScreen';
@@ -14,8 +12,13 @@ import PrivacyScreen from './src/screens/PrivacyScreen';
 import { Body, Card, Screen } from './src/components/ui';
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
-    DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold, DMSerifDisplay_400Regular,
+  // Fuentes copiadas a assets/fonts (no desde node_modules: Netlify no publica esas carpetas).
+  const [fontsLoaded, fontError] = useFonts({
+    DMSans_400Regular: require('./assets/fonts/DMSans_400Regular.ttf'),
+    DMSans_500Medium: require('./assets/fonts/DMSans_500Medium.ttf'),
+    DMSans_600SemiBold: require('./assets/fonts/DMSans_600SemiBold.ttf'),
+    DMSans_700Bold: require('./assets/fonts/DMSans_700Bold.ttf'),
+    DMSerifDisplay_400Regular: require('./assets/fonts/DMSerifDisplay_400Regular.ttf'),
   });
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
@@ -40,7 +43,8 @@ export default function App() {
   }, [session]);
 
   let screen: React.ReactNode;
-  if (!fontsLoaded) return null;
+  // Si las fuentes fallan, la app se muestra con la letra del sistema en lugar de quedarse en blanco.
+  if (!fontsLoaded && !fontError) return null;
   if (session === undefined || (session && hasProfile === null)) {
     screen = <Screen><Card><Body muted>Cargando…</Body></Card></Screen>;
   } else if (!session) {
