@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
@@ -12,6 +12,10 @@ import {
   Body, Button, Card, Chips, Eyebrow, Field, Label, Note, Option, Row, Screen, Steps, Title, T } from '../components/ui';
 
 type Step = 'datos' | 'intencion' | 'tipo' | 'filtros' | 'cuestionario' | 'fotos' | 'pago' | 'verificacion';
+
+// Partes del perfil que se pueden editar después del registro (Mis preferencias).
+export type EditSection = 'datos' | 'busqueda' | 'cuestionario' | 'fotos';
+type Mode = 'onboarding' | 'edit' | 'restart';
 
 const MIN_PHOTOS = 5;
 const MAX_PHOTOS = 9;
@@ -28,9 +32,22 @@ function parseBirth(s: string): { iso?: string; error?: string } {
   return { iso: `${y}-${mo}-${d}` };
 }
 
-export default function OnboardingScreen({ userId, email, onDone }: { userId: string; email: string; onDone: () => void }) {
+// Convierte AAAA-MM-DD a DD/MM/AAAA.
+const isoToBirth = (iso: string) => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
+
+// mode = 'onboarding': registro completo.
+// mode = 'edit': edita una sección del perfil ya creado (datos precargados).
+// mode = 'restart': vuelve a contestar intención, tipo, filtros y cuestionario desde cero,
+//   conservando cuenta, datos básicos, fotos y verificación. Solo se guarda al terminar.
+export default function OnboardingScreen({ userId, email, onDone, onCancel, mode = 'onboarding', section }: {
+  userId: string; email: string; onDone: () => void; onCancel?: () => void; mode?: Mode; section?: EditSection;
+}) {
   const t = useTheme();
-  const [step, setStep] = useState<Step>('datos');
+  const editing = mode !== 'onboarding';
+  const firstStep: Step = mode === 'restart' ? 'intencion'
+    : section === 'busqueda' ? 'intencion' : section === 'cuestionario' ? 'cuestionario' : section === 'fotos' ? 'fotos' : 'datos';
+  const [step, setStep] = useState<Step>(firstStep);
+  const [loading, setLoading] = useState(editing);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,16 +86,71 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
   const [salaryConsent, setSalaryConsent] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
 
-  const flow: Step[] = useMemo(
-    () => ['datos', 'intencion', 'tipo', ...(intent === 'formal' ? ['filtros' as Step] : []), 'cuestionario', 'fotos', 'pago', 'verificacion'],
-    [intent],
-  );
+  const busqueda: Step[] = ['intencion', 'tipo', ...(intent === 'formal' ? ['filtros' as Step] : [])];
+  const flow: Step[] = useMemo(() => {
+    if (mode === 'restart') return [...busqueda, 'cuestionario'];
+    if (mode === 'edit') return section === 'busqueda' ? busqueda : [firstStep];
+    return ['datos', ...busqueda, 'cuestionario', 'fotos', 'pago', 'verificacion'];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intent, mode, section]);
   const idx = flow.indexOf(step);
-  const go = (dir: 1 | -1) => { setError(null); setStep(flow[idx + dir]); };
+  const isLast = idx === flow.length - 1;
+  const go = (dir: 1 | -1) => {
+    setError(null);
+    if (dir === -1 && idx === 0) return onCancel?.();
+    setStep(flow[idx + dir]);
+  };
+
+  // En edición se precargan los datos guardados. En "empezar de cero" solo los datos básicos y fotos.
+  useEffect(() => {
+    if (!editing) return;
+    (async () => {
+      const [{ data: p }, { data: x }, { data: ints }, { data: f }, { data: ph }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', userId).single(),
+        supabase.from('profile_private').select('*').eq('profile_id', userId).maybeSingle(),
+        supabase.from('interests').select('interest, details').eq('profile_id', userId),
+        supabase.from('formal_preferences').select('*').eq('profile_id', userId).maybeSingle(),
+        supabase.from('photos').select('storage_path').eq('profile_id', userId).order('position'),
+      ]);
+      if (p) {
+        setFirstName(p.first_name); setLastName(p.last_name); setPhone(String(p.phone).replace(/^\+52/, ''));
+        setBirth(isoToBirth(p.birthdate)); setGender(p.gender); setAlcaldia(p.alcaldia);
+        if (mode === 'edit') {
+          setIntent(p.intent); setMatchType(p.match_type); setActivities(p.activities ?? '');
+          setPersonality({ social: 3, plan: 3, conflict: 3, ritmo: 3, ...(p.personality ?? {}) });
+          setCareer(p.career_level); setJobTitle(p.job_title ?? ''); setLinkedin(p.linkedin_url ?? '');
+        }
+      }
+      if (mode === 'edit') {
+        if (x) {
+          setSalary(x.salary_range);
+          if (x.salary_currency) setCurrency(x.salary_currency);
+          setSalaryConsent(!!x.salary_consent_at);
+        }
+        if (ints) {
+          setInterests(ints.map(i => i.interest));
+          setDetails(Object.fromEntries(ints.map(i => [i.interest, i.details])));
+        }
+        if (f) {
+          setHasKids(f.has_kids); setKidsPref(f.kids_pref); setPoliticsPref(f.politics_pref); setReligionPref(f.religion_pref);
+          setOwnReligion(f.own_religion);
+          setOwnPolitics(POLITICS.find(o => o.toLowerCase() === f.own_politics) ?? null);
+          setSensConsent(true);
+        }
+      }
+      if (ph?.length) {
+        const { data: signed } = await supabase.storage.from('photos').createSignedUrls(ph.map(r => r.storage_path), 3600);
+        setPhotos(ph.map((r, i) => ({ path: r.storage_path, preview: signed?.[i]?.signedUrl ?? '' })));
+      }
+      setLoading(false);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const birthCheck = parseBirth(birth);
   const phoneDigits = phone.replace(/\D/g, '');
-  const datosOk = firstName.trim() && lastName.trim() && phoneDigits.length === 10 && birthCheck.iso && gender && alcaldia && privacyConsent;
+  const datosOk = firstName.trim() && lastName.trim() && phoneDigits.length === 10 && birthCheck.iso && gender && alcaldia
+    && (editing || privacyConsent);
   const filtrosOk = hasKids !== null && kidsPref && ownPolitics && politicsPref && ownReligion && religionPref && sensConsent;
   const detailsOk = interests.every(i => (details[i] ?? []).length > 0);
   const quizOk = interests.length >= 3 && detailsOk && career && jobTitle.trim() && (!linkedin.trim() || LINKEDIN_RE.test(linkedin.trim())) && salary
@@ -93,7 +165,7 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
         phone: `+52${phoneDigits}`, birthdate: birthCheck.iso, gender, seeking_gender: gender === 'hombre' ? 'mujer' : 'hombre',
         intent, match_type: matchType, activities: activities.trim() || null, personality,
         career_level: career, job_title: jobTitle.trim(), linkedin_url: linkedin.trim() || null, alcaldia,
-        privacy_version: PRIVACY_VERSION, privacy_accepted_at: new Date().toISOString(),
+        ...(editing ? {} : { privacy_version: PRIVACY_VERSION, privacy_accepted_at: new Date().toISOString() }),
       });
       if (e1) throw e1;
 
@@ -118,8 +190,12 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
           consent_evidence: `app-checkbox:${new Date().toISOString()}`,
         });
         if (e4) throw e4;
+      } else {
+        // Si ya no busca relación formal, se borran sus datos sensibles: ya no se necesitan.
+        const { error: e5 } = await supabase.from('formal_preferences').delete().eq('profile_id', userId);
+        if (e5) throw e5;
       }
-      go(1);
+      if (editing) onDone(); else go(1);
     } catch (e: any) {
       setError(`No pudimos guardar tu perfil: ${e.message ?? e}`);
     } finally {
@@ -169,59 +245,78 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
 
   const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter(x => x !== v) : [...list, v]);
 
-  const header = <Steps current={idx} total={flow.length} />;
+  const header = flow.length > 1 ? <Steps current={idx} total={flow.length} /> : null;
   const err = error && <Note kind="bad">{error}</Note>;
+  // Etiqueta superior: numerada en el registro, descriptiva al editar.
+  const eb = (label: string) => (editing ? (mode === 'restart' ? `Empezar de cero · ${label}` : `Editar perfil · ${label}`) : `Paso ${idx + 1} · ${label}`);
+  const backLabel = idx === 0 && editing ? 'Cancelar' : 'Atrás';
+  // Botón final: en edición guarda; en el registro avanza.
+  const nextBtn = (ok: unknown) => (editing && isLast && step !== 'cuestionario'
+    ? <Button label="Guardar" onPress={saveProfile} disabled={!ok} loading={busy} />
+    : <Button label="Continuar" onPress={() => go(1)} disabled={!ok} />);
 
   if (showPrivacy) return <PrivacyScreen onBack={() => setShowPrivacy(false)} />;
+  if (loading) return <Screen><Card><Body muted>Cargando tu perfil…</Body></Card></Screen>;
 
   if (step === 'datos') return (
     <Screen>{header}<Card>
-      <Eyebrow>Paso 1 · Registro</Eyebrow><Title>Crea tu cuenta</Title>
+      <Eyebrow>{eb('Datos básicos')}</Eyebrow><Title>{editing ? 'Tus datos' : 'Crea tu cuenta'}</Title>
       <Field label="Nombre" value={firstName} onChangeText={setFirstName} autoComplete="given-name" />
       <Field label="Apellido" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
       <Field label="Número de celular (+52)" value={phone} onChangeText={setPhone} keyboardType="number-pad"
         maxLength={10} autoComplete="tel" placeholder="10 dígitos"
         error={phone && phoneDigits.length !== 10 ? 'Escribe tu celular a 10 dígitos' : undefined}
         hint={`Para avisos de tus citas. En tu perfil solo se muestra tu nombre. Entraste con ${email}.`} />
-      <Field label="Fecha de nacimiento" value={birth} onChangeText={setBirth} placeholder="DD/MM/AAAA"
-        keyboardType="numbers-and-punctuation" maxLength={10} error={birth.length === 10 ? birthCheck.error : undefined} />
-      <Label>Soy</Label>
-      <Chips options={['Hombre', 'Mujer']} selected={gender ? [gender === 'hombre' ? 'Hombre' : 'Mujer'] : []}
-        onToggle={v => setGender(v === 'Hombre' ? 'hombre' : 'mujer')} />
+      {editing ? (
+        <Note>Fecha de nacimiento: {birth} · {gender === 'hombre' ? 'Hombre' : 'Mujer'}. Se confirman con tu identificación, así que no se pueden cambiar aquí; si hay un error, escríbenos.</Note>
+      ) : <>
+        <Field label="Fecha de nacimiento" value={birth} onChangeText={setBirth} placeholder="DD/MM/AAAA"
+          keyboardType="numbers-and-punctuation" maxLength={10} error={birth.length === 10 ? birthCheck.error : undefined} />
+        <Label>Soy</Label>
+        <Chips options={['Hombre', 'Mujer']} selected={gender ? [gender === 'hombre' ? 'Hombre' : 'Mujer'] : []}
+          onToggle={v => setGender(v === 'Hombre' ? 'hombre' : 'mujer')} />
+      </>}
       <Label>¿En qué alcaldía vives o pasas más tiempo?</Label>
       <Chips options={ALCALDIAS} selected={alcaldia ? [alcaldia] : []} onToggle={setAlcaldia} />
-      <Option selected={privacyConsent} onPress={() => setPrivacyConsent(!privacyConsent)}
-        title="Leí y acepto el aviso de privacidad"
-        subtitle="Explica qué datos usamos, para qué y cómo ejercer tus derechos." />
-      <Button label="Leer aviso de privacidad" kind="ghost" onPress={() => setShowPrivacy(true)} />
-      <Button label="Continuar" onPress={() => go(1)} disabled={!datosOk} />
+      {!editing && <>
+        <Option selected={privacyConsent} onPress={() => setPrivacyConsent(!privacyConsent)}
+          title="Leí y acepto el aviso de privacidad"
+          subtitle="Explica qué datos usamos, para qué y cómo ejercer tus derechos." />
+        <Button label="Leer aviso de privacidad" kind="ghost" onPress={() => setShowPrivacy(true)} />
+      </>}
+      {err}
+      {editing
+        ? <Row><Button label="Cancelar" kind="ghost" onPress={() => onCancel?.()} />{nextBtn(datosOk)}</Row>
+        : <Button label="Continuar" onPress={() => go(1)} disabled={!datosOk} />}
     </Card></Screen>
   );
 
   if (step === 'intencion') return (
     <Screen>{header}<Card>
-      <Eyebrow>Paso 2 · Intención</Eyebrow><Title>¿Qué estás buscando?</Title>
+      <Eyebrow>{eb('Intención')}</Eyebrow><Title>¿Qué estás buscando?</Title>
       {(Object.keys(INTENTS) as Intent[]).map(k => (
         <Option key={k} title={INTENTS[k][0]} subtitle={INTENTS[k][1]} selected={intent === k} onPress={() => setIntent(k)} />
       ))}
-      <Body muted small>Solo te presentamos personas que buscan lo mismo que tú.</Body>
-      <Row><Button label="Atrás" kind="ghost" onPress={() => go(-1)} /><Button label="Continuar" onPress={() => go(1)} disabled={!intent} /></Row>
+      <Body muted small>Solo te presentamos personas que buscan lo mismo que tú.{editing ? ' Los cambios aplican a partir de tu siguiente match.' : ''}</Body>
+      {err}
+      <Row><Button label={backLabel} kind="ghost" onPress={() => go(-1)} />{nextBtn(intent)}</Row>
     </Card></Screen>
   );
 
   if (step === 'tipo') return (
     <Screen>{header}<Card>
-      <Eyebrow>Paso 3 · Tipo de match</Eyebrow><Title>¿Qué tipo de persona quieres conocer?</Title>
+      <Eyebrow>{eb('Tipo de match')}</Eyebrow><Title>¿Qué tipo de persona quieres conocer?</Title>
       {(Object.keys(MATCH_TYPES) as MatchType[]).map(k => (
         <Option key={k} title={MATCH_TYPES[k][0]} subtitle={MATCH_TYPES[k][1]} selected={matchType === k} onPress={() => setMatchType(k)} />
       ))}
-      <Row><Button label="Atrás" kind="ghost" onPress={() => go(-1)} /><Button label="Continuar" onPress={() => go(1)} disabled={!matchType} /></Row>
+      {err}
+      <Row><Button label={backLabel} kind="ghost" onPress={() => go(-1)} />{nextBtn(matchType)}</Row>
     </Card></Screen>
   );
 
   if (step === 'filtros') return (
     <Screen>{header}<Card>
-      <Eyebrow>Solo relación formal</Eyebrow><Title>Lo que no es negociable</Title>
+      <Eyebrow>{eb('Solo relación formal')}</Eyebrow><Title>Lo que no es negociable</Title>
       <Label>¿Tienes hijos?</Label>
       <Chips options={['Sí', 'No']} selected={hasKids === null ? [] : [hasKids ? 'Sí' : 'No']} onToggle={v => setHasKids(v === 'Sí')} />
       <Label>Buscas a alguien que…</Label>
@@ -242,20 +337,21 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
         title="Autorizo el uso de mi religión y opinión política"
         subtitle="Son datos sensibles. Solo se usan para encontrar mi match y nunca se muestran en mi perfil." />
       <Button label="Leer aviso de privacidad" kind="ghost" onPress={() => setShowPrivacy(true)} />
-      <Row><Button label="Atrás" kind="ghost" onPress={() => go(-1)} /><Button label="Continuar" onPress={() => go(1)} disabled={!filtrosOk} /></Row>
+      {err}
+      <Row><Button label={backLabel} kind="ghost" onPress={() => go(-1)} />{nextBtn(filtrosOk)}</Row>
     </Card></Screen>
   );
 
   if (step === 'cuestionario') return (
     <Screen>{header}<Card>
-      <Eyebrow>Cuestionario</Eyebrow><Title>Cuéntanos de ti</Title>
+      <Eyebrow>{eb('Cuestionario')}</Eyebrow><Title>Cuéntanos de ti</Title>
       <Label>Intereses (elige al menos 3)</Label>
       <Chips options={Object.keys(INTEREST_DETAILS)} selected={interests} onToggle={v => {
         setInterests(toggle(interests, v));
         if (interests.includes(v)) setDetails(({ [v]: _, ...rest }) => rest);
       }} />
       {interests.map(i => (
-        <View key={i} style={[st.box, { borderColor: t.line, backgroundColor: t.bg }]}>
+        <View key={i} style={[st.box, { backgroundColor: t.soft }]}>
           <Label>{i}: ¿qué te gusta en específico?</Label>
           <Chips options={INTEREST_DETAILS[i]} selected={details[i] ?? []}
             onToggle={d => setDetails(x => ({ ...x, [i]: toggle(x[i] ?? [], d) }))} />
@@ -294,13 +390,13 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
       )}
       {interests.length >= 3 && !detailsOk && <Body muted small>Elige al menos un detalle en cada interés.</Body>}
       {err}
-      <Row><Button label="Atrás" kind="ghost" onPress={() => go(-1)} /><Button label="Guardar y continuar" onPress={saveProfile} disabled={!quizOk} loading={busy} /></Row>
+      <Row><Button label={backLabel} kind="ghost" onPress={() => go(-1)} /><Button label={editing ? 'Guardar' : 'Guardar y continuar'} onPress={saveProfile} disabled={!quizOk} loading={busy} /></Row>
     </Card></Screen>
   );
 
   if (step === 'fotos') return (
     <Screen>{header}<Card>
-      <Eyebrow>Fotos</Eyebrow><Title>Sube al menos 5 fotos</Title>
+      <Eyebrow>{eb('Fotos')}</Eyebrow><Title>{editing ? 'Tus fotos' : 'Sube al menos 5 fotos'}</Title>
       <Body muted>Fotos recientes donde se vea bien tu cara. Las comparamos con tu selfie en la verificación.</Body>
       <View style={st.grid}>
         {photos.map((p, i) => (
@@ -320,7 +416,10 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
       </View>
       <Body muted small>{photos.length} de {MIN_PHOTOS} mínimo (máximo {MAX_PHOTOS})</Body>
       {err}
-      <Row><Button label="Atrás" kind="ghost" onPress={() => go(-1)} /><Button label="Continuar" onPress={() => go(1)} disabled={photos.length < MIN_PHOTOS || busy} loading={busy} /></Row>
+      {editing
+        ? <Button label="Listo" onPress={onDone} disabled={photos.length < MIN_PHOTOS || busy} loading={busy} />
+        : <Row><Button label="Atrás" kind="ghost" onPress={() => go(-1)} /><Button label="Continuar" onPress={() => go(1)} disabled={photos.length < MIN_PHOTOS || busy} loading={busy} /></Row>}
+      {editing && photos.length < MIN_PHOTOS && <Body muted small>Necesitas al menos {MIN_PHOTOS} fotos.</Body>}
     </Card></Screen>
   );
 
@@ -344,7 +443,7 @@ export default function OnboardingScreen({ userId, email, onDone }: { userId: st
 }
 
 const st = StyleSheet.create({
-  box: { borderWidth: 1, borderRadius: 10, padding: 12, gap: 8 },
+  box: { borderRadius: 18, padding: 14, gap: 10 },
   scaleLabels: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   scaleText: { fontSize: 12, flex: 1 },
   scale: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 },

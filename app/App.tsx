@@ -54,7 +54,7 @@ export default function App() {
   } else if (showPrivacy) {
     screen = <PrivacyScreen onBack={() => setShowPrivacy(false)} />;
   } else if (showPrefs) {
-    screen = <PreferencesScreen userId={session.user.id} onBack={() => setShowPrefs(false)} />;
+    screen = <PreferencesScreen userId={session.user.id} email={session.user.email ?? ''} onBack={() => setShowPrefs(false)} />;
   } else if (openMatch) {
     screen = <MatchScreen matchId={openMatch} userId={session.user.id} onBack={() => setOpenMatch(null)} />;
   } else {
